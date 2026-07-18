@@ -13,13 +13,18 @@ type Incident = {
   category: string;
   impact: string;
   description: string;
-  reporter: string;
+  reporterName: string;
+  reporterEmail: string;
   postcode: string;
   consentNetworkRail: boolean;
   consentCouncil: boolean;
   consentMp: boolean;
   status: IncidentStatus;
+  createdAt?: string;
 };
+
+type SubmitState = "idle" | "saving" | "saved" | "error";
+type AdminState = "locked" | "loading" | "ready" | "error";
 
 const categories = [
   "Overnight noise",
@@ -43,7 +48,8 @@ const seedIncidents: Incident[] = [
     impact: "Sleep disruption for nearby homes",
     description:
       "Repeated machinery noise after midnight, with no leaflet or prior notice received by the household.",
-    reporter: "Resident A",
+    reporterName: "Resident A",
+    reporterEmail: "resident@example.org",
     postcode: "IP17",
     consentNetworkRail: true,
     consentCouncil: true,
@@ -60,7 +66,8 @@ const seedIncidents: Incident[] = [
     impact: "Delayed school and care journeys",
     description:
       "Crossing remained down longer than expected during the morning peak, with traffic backing up through the centre.",
-    reporter: "Resident B",
+    reporterName: "Resident B",
+    reporterEmail: "resident@example.org",
     postcode: "IP17",
     consentNetworkRail: true,
     consentCouncil: true,
@@ -77,7 +84,8 @@ const seedIncidents: Incident[] = [
     impact: "Business opening disrupted",
     description:
       "Works vehicles arrived late at night. Nearby traders had not been given practical notice of access changes.",
-    reporter: "Business owner",
+    reporterName: "Business owner",
+    reporterEmail: "business@example.org",
     postcode: "IP17",
     consentNetworkRail: true,
     consentCouncil: true,
@@ -93,7 +101,8 @@ const blankIncident = {
   category: "Overnight noise",
   impact: "",
   description: "",
-  reporter: "",
+  reporterName: "",
+  reporterEmail: "",
   postcode: "",
   consentNetworkRail: true,
   consentCouncil: true,
@@ -101,31 +110,22 @@ const blankIncident = {
 };
 
 export default function Home() {
-  const [incidents, setIncidents] = useState<Incident[]>(seedIncidents);
+  const [publicIncidents, setPublicIncidents] = useState<Incident[]>(seedIncidents);
+  const [adminIncidents, setAdminIncidents] = useState<Incident[]>([]);
   const [form, setForm] = useState(blankIncident);
   const [selectedId, setSelectedId] = useState(seedIncidents[0].id);
+  const [submitState, setSubmitState] = useState<SubmitState>("idle");
+  const [adminState, setAdminState] = useState<AdminState>("locked");
+  const [adminMessage, setAdminMessage] = useState("");
+  const [viewer, setViewer] = useState("");
   const [toast, setToast] = useState("");
 
-  useEffect(() => {
-    const stored = window.localStorage.getItem("sax-rail-watch-incidents");
-    if (stored) {
-      setIncidents(JSON.parse(stored));
-      const parsed = JSON.parse(stored) as Incident[];
-      if (parsed[0]) setSelectedId(parsed[0].id);
-    }
-  }, []);
-
-  useEffect(() => {
-    window.localStorage.setItem(
-      "sax-rail-watch-incidents",
-      JSON.stringify(incidents),
-    );
-  }, [incidents]);
-
-  const selected = incidents.find((incident) => incident.id === selectedId);
+  const incidents = adminIncidents.length ? adminIncidents : publicIncidents;
+  const selected = incidents.find((incident) => incident.id === selectedId) || incidents[0];
 
   const stats = useMemo(() => {
     const overnight = incidents.filter((i) => i.category === "Overnight noise");
+    const safety = incidents.filter((i) => i.category === "Safety concern");
     const ready = incidents.filter((i) => i.status === "Ready to send");
     const consented = incidents.filter(
       (i) => i.consentCouncil || i.consentMp || i.consentNetworkRail,
@@ -134,39 +134,72 @@ export default function Home() {
     return {
       total: incidents.length,
       overnight: overnight.length,
+      safety: safety.length,
       ready: ready.length,
       consented: consented.length,
     };
   }, [incidents]);
 
-  function submitIncident(event: FormEvent<HTMLFormElement>) {
+  useEffect(() => {
+    if (selected && !incidents.some((incident) => incident.id === selectedId)) {
+      setSelectedId(selected.id);
+    }
+  }, [incidents, selected, selectedId]);
+
+  async function submitIncident(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const nextNumber = String(incidents.length + 1).padStart(3, "0");
-    const incident: Incident = {
-      id: crypto.randomUUID(),
-      reference: `SAX-2026-${nextNumber}`,
-      ...form,
-      status: "Pending",
-    };
+    setSubmitState("saving");
 
-    setIncidents((current) => [incident, ...current]);
-    setSelectedId(incident.id);
-    setForm(blankIncident);
-    showToast(`${incident.reference} added to the evidence log`);
+    try {
+      const response = await fetch("/api/incidents", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "The incident could not be saved.");
+      }
+
+      const incident = data.incident as Incident;
+      setPublicIncidents((current) => [incident, ...current]);
+      setSelectedId(incident.id);
+      setForm(blankIncident);
+      setSubmitState("saved");
+      showToast(`${incident.reference} saved to Supabase`);
+    } catch (error) {
+      setSubmitState("error");
+      showToast(error instanceof Error ? error.message : "The incident could not be saved.");
+    }
   }
 
-  function updateStatus(id: string, status: IncidentStatus) {
-    setIncidents((current) =>
-      current.map((incident) =>
-        incident.id === id ? { ...incident, status } : incident,
-      ),
-    );
-  }
+  async function loadAdminIncidents() {
+    setAdminState("loading");
+    setAdminMessage("");
 
-  function resetDemo() {
-    setIncidents(seedIncidents);
-    setSelectedId(seedIncidents[0].id);
-    showToast("Demo data restored");
+    try {
+      const response = await fetch("/api/incidents", { method: "GET" });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Admin incident list could not be loaded.");
+      }
+
+      const rows = data.incidents as Incident[];
+      setAdminIncidents(rows);
+      setViewer(data.viewer?.email || "Workspace user");
+      setSelectedId(rows[0]?.id || selectedId);
+      setAdminState("ready");
+      showToast("Admin reports loaded from Supabase");
+    } catch (error) {
+      setAdminState("error");
+      setAdminMessage(
+        error instanceof Error
+          ? error.message
+          : "Admin access requires workspace authentication.",
+      );
+    }
   }
 
   function exportCsv() {
@@ -179,6 +212,9 @@ export default function Home() {
         "category",
         "impact",
         "status",
+        "network_rail_consent",
+        "council_consent",
+        "mp_consent",
       ],
       ...incidents.map((incident) => [
         incident.reference,
@@ -188,6 +224,9 @@ export default function Home() {
         incident.category,
         incident.impact,
         incident.status,
+        incident.consentNetworkRail,
+        incident.consentCouncil,
+        incident.consentMp,
       ]),
     ];
 
@@ -208,7 +247,7 @@ export default function Home() {
 
   function showToast(message: string) {
     setToast(message);
-    window.setTimeout(() => setToast(""), 2600);
+    window.setTimeout(() => setToast(""), 3000);
   }
 
   const complaintDraft = selected
@@ -232,391 +271,449 @@ Network Rail: ${selected.consentNetworkRail ? "Yes" : "No"}
 Saxmundham Town Council: ${selected.consentCouncil ? "Yes" : "No"}
 Jenny Riddell-Carpenter MP: ${selected.consentMp ? "Yes" : "No"}
 
-This scratch MVP does not send live emails. In the production build, an authorised administrator would review the report, confirm consent, and send or export it through the agreed route.`
+Reporter details are visible only in the authenticated admin view and should be shared strictly according to the recorded consent choices.`
     : "";
 
   return (
     <main>
-      <section className="hero">
-        <nav className="topbar" aria-label="Primary navigation">
+      <section className="appShell" id="top">
+        <aside className="sideNav" aria-label="Primary navigation">
           <a className="brand" href="#top" aria-label="Saxmundham Rail Watch">
             <span className="brandMark">SR</span>
             <span>Saxmundham Rail Watch</span>
           </a>
-          <div className="navLinks">
+          <nav>
             <a href="#report">Report</a>
-            <a href="#dashboard">Dashboard</a>
-            <a href="#privacy">Privacy</a>
+            <a href="#evidence">Evidence</a>
+            <a href="#admin">Admin</a>
+            <a href="#privacy">Controls</a>
+          </nav>
+          <div className="systemCard">
+            <span>Backend</span>
+            <strong>Supabase API</strong>
+            <small>Server-only credentials</small>
           </div>
-        </nav>
+        </aside>
 
-        <div className="heroGrid" id="top">
-          <div className="heroCopy">
-            <p className="eyebrow">Scratch MVP</p>
-            <h1>Turn rail disruption into structured evidence.</h1>
-            <p>
-              A resident-facing incident log for Saxmundham: collect consistent
-              reports, protect personal details, and prepare reviewed complaint
-              packs for Network Rail, the Town Council and the local MP.
-            </p>
-            <div className="heroActions">
-              <a className="button primary" href="#report">
-                Log an incident
-              </a>
-              <a className="button secondary" href="#dashboard">
-                Review evidence
-              </a>
+        <section className="workspace">
+          <header className="hero">
+            <div className="heroCopy">
+              <p className="eyebrow">Resident evidence platform</p>
+              <h1>Saxmundham Rail Watch</h1>
+              <p>
+                Log rail disruption, separate consent from evidence, and build a
+                reviewed case file for Network Rail, Saxmundham Town Council and
+                Jenny Riddell-Carpenter MP.
+              </p>
+              <div className="heroActions">
+                <a className="button primary" href="#report">
+                  Log an incident
+                </a>
+                <a className="button secondary" href="#admin">
+                  Open admin queue
+                </a>
+              </div>
             </div>
-          </div>
-
-          <div className="signalPanel" aria-label="Current evidence summary">
-            <div>
-              <span className="panelLabel">Live demo reference</span>
-              <strong>{selected?.reference ?? "SAX-2026-000"}</strong>
-            </div>
-            <div className="trackGraphic" aria-hidden="true">
-              <span />
-              <span />
-              <span />
-              <span />
-            </div>
-            <div className="signalStats">
-              <span>
-                <strong>{stats.total}</strong>
-                reports
-              </span>
-              <span>
-                <strong>{stats.ready}</strong>
-                ready
-              </span>
-              <span>
-                <strong>{stats.overnight}</strong>
-                overnight
-              </span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="section overview" aria-label="Platform workflow">
-        <div className="sectionHeading">
-          <p className="eyebrow">How the pilot works</p>
-          <h2>Evidence first, automation second.</h2>
-        </div>
-        <div className="workflow">
-          {[
-            ["1", "Resident logs incident", "Consistent fields, consent choices and a generated reference."],
-            ["2", "Admin reviews", "Moderation keeps unreliable, duplicate or unsafe material out of complaint packs."],
-            ["3", "Complaint draft", "A structured draft is created for the agreed reporting route."],
-            ["4", "Digest evidence", "Patterns can be exported for councillors, the MP and campaign records."],
-          ].map(([step, title, text]) => (
-            <article className="workflowItem" key={step}>
-              <span>{step}</span>
-              <h3>{title}</h3>
-              <p>{text}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="section split" id="report">
-        <div className="sectionHeading stickyHeading">
-          <p className="eyebrow">Public form</p>
-          <h2>Log a new incident</h2>
-          <p>
-            This version stores demo reports in your browser only. It is for
-            testing wording, flow and evidence structure before adding a secure
-            backend.
-          </p>
-        </div>
-
-        <form className="formPanel" onSubmit={submitIncident}>
-          <div className="formGrid">
-            <label>
-              Date
-              <input
-                required
-                type="date"
-                value={form.date}
-                onChange={(event) =>
-                  setForm({ ...form, date: event.target.value })
-                }
-              />
-            </label>
-            <label>
-              Time
-              <input
-                required
-                type="time"
-                value={form.time}
-                onChange={(event) =>
-                  setForm({ ...form, time: event.target.value })
-                }
-              />
-            </label>
-          </div>
-
-          <label>
-            Location
-            <input
-              required
-              placeholder="Station approach, crossing, street or postcode"
-              value={form.location}
-              onChange={(event) =>
-                setForm({ ...form, location: event.target.value })
-              }
-            />
-          </label>
-
-          <label>
-            Incident category
-            <select
-              value={form.category}
-              onChange={(event) =>
-                setForm({ ...form, category: event.target.value })
-              }
-            >
-              {categories.map((category) => (
-                <option key={category}>{category}</option>
-              ))}
-            </select>
-          </label>
-
-          <label>
-            Impact
-            <input
-              required
-              placeholder="Sleep disruption, traffic delay, business impact"
-              value={form.impact}
-              onChange={(event) =>
-                setForm({ ...form, impact: event.target.value })
-              }
-            />
-          </label>
-
-          <label>
-            What happened?
-            <textarea
-              required
-              rows={5}
-              placeholder="Keep it factual: what, when, where, who was affected and whether notice was given."
-              value={form.description}
-              onChange={(event) =>
-                setForm({ ...form, description: event.target.value })
-              }
-            />
-          </label>
-
-          <div className="formGrid">
-            <label>
-              Reporter name
-              <input
-                required
-                placeholder="Not shown publicly"
-                value={form.reporter}
-                onChange={(event) =>
-                  setForm({ ...form, reporter: event.target.value })
-                }
-              />
-            </label>
-            <label>
-              Postcode area
-              <input
-                required
-                placeholder="e.g. IP17"
-                value={form.postcode}
-                onChange={(event) =>
-                  setForm({ ...form, postcode: event.target.value })
-                }
-              />
-            </label>
-          </div>
-
-          <fieldset>
-            <legend>Consent choices</legend>
-            <label className="checkRow">
-              <input
-                type="checkbox"
-                checked={form.consentNetworkRail}
-                onChange={(event) =>
-                  setForm({
-                    ...form,
-                    consentNetworkRail: event.target.checked,
-                  })
-                }
-              />
-              Share this report with Network Rail after review
-            </label>
-            <label className="checkRow">
-              <input
-                type="checkbox"
-                checked={form.consentCouncil}
-                onChange={(event) =>
-                  setForm({ ...form, consentCouncil: event.target.checked })
-                }
-              />
-              Include anonymised details in Town Council evidence packs
-            </label>
-            <label className="checkRow">
-              <input
-                type="checkbox"
-                checked={form.consentMp}
-                onChange={(event) =>
-                  setForm({ ...form, consentMp: event.target.checked })
-                }
-              />
-              Share casework details with Jenny Riddell-Carpenter MP
-            </label>
-          </fieldset>
-
-          <button className="button primary fullButton" type="submit">
-            Add incident to demo log
-          </button>
-        </form>
-      </section>
-
-      <section className="section dashboard" id="dashboard">
-        <div className="sectionHeading dashboardHead">
-          <div>
-            <p className="eyebrow">Admin view</p>
-            <h2>Evidence dashboard</h2>
-          </div>
-          <div className="dashboardActions">
-            <button className="button secondary" onClick={exportCsv}>
-              Export CSV
-            </button>
-            <button className="button ghost" onClick={resetDemo}>
-              Reset demo
-            </button>
-          </div>
-        </div>
-
-        <div className="metricGrid">
-          <Metric label="Total incidents" value={stats.total} />
-          <Metric label="Ready to send" value={stats.ready} />
-          <Metric label="Consent recorded" value={stats.consented} />
-          <Metric label="Overnight noise" value={stats.overnight} />
-        </div>
-
-        <div className="adminGrid">
-          <div className="incidentList" aria-label="Incident list">
-            {incidents.map((incident) => (
-              <button
-                className={`incidentRow ${
-                  incident.id === selectedId ? "active" : ""
-                }`}
-                key={incident.id}
-                onClick={() => setSelectedId(incident.id)}
-              >
+            <div className="signalPanel" aria-label="Current evidence summary">
+              <span className="panelLabel">Current evidence reference</span>
+              <strong>{selected?.reference || "SAX-2026-000"}</strong>
+              <div className="trackGraphic" aria-hidden="true">
+                <span />
+                <span />
+                <span />
+                <span />
+              </div>
+              <div className="signalStats">
                 <span>
-                  <strong>{incident.reference}</strong>
-                  <small>{incident.category}</small>
+                  <strong>{stats.total}</strong>
+                  reports
                 </span>
-                <em>{incident.status}</em>
-              </button>
-            ))}
-          </div>
+                <span>
+                  <strong>{stats.ready}</strong>
+                  ready
+                </span>
+                <span>
+                  <strong>{stats.safety}</strong>
+                  safety
+                </span>
+              </div>
+            </div>
+          </header>
 
-          <article className="detailPanel">
-            {selected ? (
-              <>
-                <div className="detailTop">
-                  <div>
-                    <p className="eyebrow">{selected.reference}</p>
-                    <h3>{selected.category}</h3>
-                  </div>
-                  <select
-                    value={selected.status}
+          <section className="section workflowBand" aria-label="Platform workflow">
+            {[
+              ["01", "Resident report", "Structured incident facts, contact details and consent are posted to Supabase."],
+              ["02", "Workspace review", "Admin reads require authenticated workspace access before private reports load."],
+              ["03", "Evidence pack", "Moderated reports become exportable complaint drafts and CSV evidence."],
+              ["04", "Case building", "Patterns, references and repeated impacts can support a measured campaign."],
+            ].map(([step, title, text]) => (
+              <article className="workflowItem" key={step}>
+                <span>{step}</span>
+                <h3>{title}</h3>
+                <p>{text}</p>
+              </article>
+            ))}
+          </section>
+
+          <section className="section split" id="report">
+            <div className="sectionHeading stickyHeading">
+              <p className="eyebrow">Public intake</p>
+              <h2>Log a new incident</h2>
+              <p>
+                Submissions are sent to the secure server endpoint, which writes
+                to Supabase using server-side credentials. Reporter details are
+                not exposed in public page code.
+              </p>
+              <div className={`statusPill ${submitState}`}>
+                {submitState === "saving"
+                  ? "Saving report"
+                  : submitState === "saved"
+                    ? "Last report saved"
+                    : submitState === "error"
+                      ? "Save needs attention"
+                      : "Ready for reports"}
+              </div>
+            </div>
+
+            <form className="formPanel" onSubmit={submitIncident}>
+              <div className="formGrid">
+                <label>
+                  Date
+                  <input
+                    required
+                    type="date"
+                    value={form.date}
                     onChange={(event) =>
-                      updateStatus(
-                        selected.id,
-                        event.target.value as IncidentStatus,
-                      )
+                      setForm({ ...form, date: event.target.value })
+                    }
+                  />
+                </label>
+                <label>
+                  Time
+                  <input
+                    required
+                    type="time"
+                    value={form.time}
+                    onChange={(event) =>
+                      setForm({ ...form, time: event.target.value })
+                    }
+                  />
+                </label>
+              </div>
+
+              <label>
+                Location
+                <input
+                  required
+                  placeholder="Station approach, crossing, street or postcode"
+                  value={form.location}
+                  onChange={(event) =>
+                    setForm({ ...form, location: event.target.value })
+                  }
+                />
+              </label>
+
+              <div className="formGrid">
+                <label>
+                  Incident category
+                  <select
+                    value={form.category}
+                    onChange={(event) =>
+                      setForm({ ...form, category: event.target.value })
                     }
                   >
-                    <option>Pending</option>
-                    <option>Reviewed</option>
-                    <option>Ready to send</option>
+                    {categories.map((category) => (
+                      <option key={category}>{category}</option>
+                    ))}
                   </select>
+                </label>
+                <label>
+                  Impact
+                  <input
+                    required
+                    placeholder="Sleep disruption, traffic delay, business impact"
+                    value={form.impact}
+                    onChange={(event) =>
+                      setForm({ ...form, impact: event.target.value })
+                    }
+                  />
+                </label>
+              </div>
+
+              <label>
+                What happened?
+                <textarea
+                  required
+                  rows={6}
+                  placeholder="Keep it factual: what, when, where, who was affected and whether notice was given."
+                  value={form.description}
+                  onChange={(event) =>
+                    setForm({ ...form, description: event.target.value })
+                  }
+                />
+              </label>
+
+              <div className="formGrid">
+                <label>
+                  Reporter name
+                  <input
+                    required
+                    placeholder="Not shown publicly"
+                    value={form.reporterName}
+                    onChange={(event) =>
+                      setForm({ ...form, reporterName: event.target.value })
+                    }
+                  />
+                </label>
+                <label>
+                  Email
+                  <input
+                    required
+                    type="email"
+                    placeholder="For verification and follow-up"
+                    value={form.reporterEmail}
+                    onChange={(event) =>
+                      setForm({ ...form, reporterEmail: event.target.value })
+                    }
+                  />
+                </label>
+              </div>
+
+              <label>
+                Postcode area
+                <input
+                  required
+                  placeholder="e.g. IP17"
+                  value={form.postcode}
+                  onChange={(event) =>
+                    setForm({ ...form, postcode: event.target.value })
+                  }
+                />
+              </label>
+
+              <fieldset>
+                <legend>Consent choices</legend>
+                <label className="checkRow">
+                  <input
+                    type="checkbox"
+                    checked={form.consentNetworkRail}
+                    onChange={(event) =>
+                      setForm({
+                        ...form,
+                        consentNetworkRail: event.target.checked,
+                      })
+                    }
+                  />
+                  Share this report with Network Rail after review
+                </label>
+                <label className="checkRow">
+                  <input
+                    type="checkbox"
+                    checked={form.consentCouncil}
+                    onChange={(event) =>
+                      setForm({ ...form, consentCouncil: event.target.checked })
+                    }
+                  />
+                  Include anonymised details in Town Council evidence packs
+                </label>
+                <label className="checkRow">
+                  <input
+                    type="checkbox"
+                    checked={form.consentMp}
+                    onChange={(event) =>
+                      setForm({ ...form, consentMp: event.target.checked })
+                    }
+                  />
+                  Share casework details with Jenny Riddell-Carpenter MP
+                </label>
+              </fieldset>
+
+              <button
+                className="button primary fullButton"
+                disabled={submitState === "saving"}
+                type="submit"
+              >
+                {submitState === "saving" ? "Saving..." : "Submit incident"}
+              </button>
+            </form>
+          </section>
+
+          <section className="section evidence" id="evidence">
+            <div className="sectionHeading dashboardHead">
+              <div>
+                <p className="eyebrow">Public evidence</p>
+                <h2>Pattern snapshot</h2>
+              </div>
+              <div className="dashboardActions">
+                <button className="button secondary" onClick={exportCsv}>
+                  Export CSV
+                </button>
+              </div>
+            </div>
+            <div className="metricGrid">
+              <Metric label="Total incidents" value={stats.total} />
+              <Metric label="Consent recorded" value={stats.consented} />
+              <Metric label="Overnight noise" value={stats.overnight} />
+              <Metric label="Ready to send" value={stats.ready} />
+            </div>
+            <div className="mapPanel">
+              <div className="mapRail" aria-hidden="true" />
+              <div>
+                <p className="eyebrow">Saxmundham focus</p>
+                <h3>Structured reports build a chronology, not a pile of emails.</h3>
+                <p>
+                  The public view stays aggregated. The private admin view can
+                  load identifiable Supabase reports only after workspace
+                  authentication succeeds.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section className="section dashboard" id="admin">
+            <div className="sectionHeading dashboardHead">
+              <div>
+                <p className="eyebrow">Workspace admin</p>
+                <h2>Review queue</h2>
+              </div>
+              <div className="dashboardActions">
+                <button className="button secondary" onClick={loadAdminIncidents}>
+                  {adminState === "loading" ? "Checking..." : "Load private reports"}
+                </button>
+              </div>
+            </div>
+
+            {adminState !== "ready" ? (
+              <div className="lockedPanel">
+                <strong>Admin dashboard is locked</strong>
+                <p>
+                  Incident reads call `GET /api/incidents`. The server checks
+                  for workspace authentication headers before it queries
+                  Supabase with the service role key.
+                </p>
+                {adminMessage ? <small>{adminMessage}</small> : null}
+              </div>
+            ) : (
+              <>
+                <div className="viewerBar">
+                  Authenticated as <strong>{viewer}</strong>
                 </div>
+                <div className="adminGrid">
+                  <div className="incidentList" aria-label="Incident list">
+                    {incidents.map((incident) => (
+                      <button
+                        className={`incidentRow ${
+                          incident.id === selected?.id ? "active" : ""
+                        }`}
+                        key={incident.id}
+                        onClick={() => setSelectedId(incident.id)}
+                      >
+                        <span>
+                          <strong>{incident.reference}</strong>
+                          <small>{incident.category}</small>
+                        </span>
+                        <em>{incident.status}</em>
+                      </button>
+                    ))}
+                  </div>
 
-                <dl className="facts">
-                  <div>
-                    <dt>Date</dt>
-                    <dd>{selected.date}</dd>
-                  </div>
-                  <div>
-                    <dt>Time</dt>
-                    <dd>{selected.time}</dd>
-                  </div>
-                  <div>
-                    <dt>Location</dt>
-                    <dd>{selected.location}</dd>
-                  </div>
-                  <div>
-                    <dt>Impact</dt>
-                    <dd>{selected.impact}</dd>
-                  </div>
-                </dl>
+                  <article className="detailPanel">
+                    {selected ? (
+                      <>
+                        <div className="detailTop">
+                          <div>
+                            <p className="eyebrow">{selected.reference}</p>
+                            <h3>{selected.category}</h3>
+                          </div>
+                          <span className="statusPill ready">{selected.status}</span>
+                        </div>
 
-                <p className="description">{selected.description}</p>
+                        <dl className="facts">
+                          <div>
+                            <dt>Date</dt>
+                            <dd>{selected.date}</dd>
+                          </div>
+                          <div>
+                            <dt>Time</dt>
+                            <dd>{selected.time}</dd>
+                          </div>
+                          <div>
+                            <dt>Location</dt>
+                            <dd>{selected.location}</dd>
+                          </div>
+                          <div>
+                            <dt>Postcode</dt>
+                            <dd>{selected.postcode}</dd>
+                          </div>
+                        </dl>
 
-                <div className="draftBox">
-                  <div className="draftHeader">
-                    <h4>Complaint draft</h4>
-                    <button
-                      className="button ghost"
-                      onClick={() => {
-                        navigator.clipboard.writeText(complaintDraft);
-                        showToast("Complaint draft copied");
-                      }}
-                    >
-                      Copy
-                    </button>
-                  </div>
-                  <pre>{complaintDraft}</pre>
+                        <div className="reporterPanel">
+                          <span>Reporter</span>
+                          <strong>{selected.reporterName}</strong>
+                          <small>{selected.reporterEmail}</small>
+                        </div>
+                        <p className="description">{selected.description}</p>
+
+                        <div className="draftBox">
+                          <div className="draftHeader">
+                            <h4>Complaint draft</h4>
+                            <button
+                              className="button ghost"
+                              onClick={() => {
+                                navigator.clipboard.writeText(complaintDraft);
+                                showToast("Complaint draft copied");
+                              }}
+                            >
+                              Copy
+                            </button>
+                          </div>
+                          <pre>{complaintDraft}</pre>
+                        </div>
+                      </>
+                    ) : (
+                      <p>No incident selected.</p>
+                    )}
+                  </article>
                 </div>
               </>
-            ) : (
-              <p>No incident selected.</p>
             )}
-          </article>
-        </div>
-      </section>
+          </section>
 
-      <section className="section privacy" id="privacy">
-        <div className="sectionHeading">
-          <p className="eyebrow">Launch guardrails</p>
-          <h2>Not a spam machine. An evidence system.</h2>
-        </div>
-        <div className="guardrails">
-          <article>
-            <h3>Consent separated</h3>
-            <p>
-              Identifiable details should be shared only with explicit consent,
-              and the public dashboard should stay aggregated and anonymised.
-            </p>
-          </article>
-          <article>
-            <h3>Human review</h3>
-            <p>
-              A moderator checks duplicates, unsafe uploads and defamatory
-              wording before any complaint leaves the system.
-            </p>
-          </article>
-          <article>
-            <h3>Backend later</h3>
-            <p>
-              The live build would add Supabase, authentication, evidence
-              storage, email verification, audit logs and retention controls.
-            </p>
-          </article>
-        </div>
+          <section className="section privacy" id="privacy">
+            <div className="sectionHeading">
+              <p className="eyebrow">Launch controls</p>
+              <h2>Security and data boundaries</h2>
+            </div>
+            <div className="guardrails">
+              <article>
+                <h3>Server-only Supabase key</h3>
+                <p>
+                  The frontend never receives the service role key. Browser code
+                  only calls same-origin API routes.
+                </p>
+              </article>
+              <article>
+                <h3>Authenticated admin reads</h3>
+                <p>
+                  Private report loading requires workspace identity headers and
+                  can be narrowed with `ADMIN_EMAILS`.
+                </p>
+              </article>
+              <article>
+                <h3>Consent-aware casework</h3>
+                <p>
+                  Complaint drafts include the recorded consent flags so admins
+                  can avoid oversharing personal details.
+                </p>
+              </article>
+            </div>
+          </section>
+        </section>
       </section>
 
       <footer>
         <strong>Saxmundham Rail Watch</strong>
-        <span>Scratch MVP for structured incident evidence.</span>
+        <span>Supabase-ready incident evidence platform.</span>
       </footer>
 
       {toast ? <div className="toast">{toast}</div> : null}

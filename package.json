@@ -2,6 +2,7 @@
   "name": "sax-rail-watch",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build && node scripts/make-dist.cjs",
