@@ -137,6 +137,7 @@ revoke all on all tables in schema private from public, anon, authenticated;
 revoke all on public.incidents from anon, authenticated;
 grant select on public.approved_reports to anon, authenticated;
 grant select on public.broad_locations to anon, authenticated;
+grant select on public.admin_profiles to authenticated;
 
 create or replace function public.submit_incident(payload jsonb)
 returns text
