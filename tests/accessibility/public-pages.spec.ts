@@ -9,6 +9,8 @@ for (const path of [
   "/how-it-works",
   "/privacy",
   "/accessibility",
+  "/admin/login",
+  "/admin/activate",
 ]) {
   test(`${path} has no serious accessibility violations`, async ({ page }) => {
     await page.goto(path);
