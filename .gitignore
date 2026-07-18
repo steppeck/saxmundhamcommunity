@@ -1,5 +1,6 @@
 .next
 node_modules
+.pnpm-store
 out
 dist
 work
@@ -7,3 +8,8 @@ outputs
 *.log
 .env*
 !.env.example
+.netlify
+playwright-report
+test-results
+coverage
+*.tsbuildinfo
