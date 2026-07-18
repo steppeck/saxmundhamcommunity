@@ -18,6 +18,7 @@ export const reportSchema = z
     incidentDate: z.string().date(),
     approximateTime: z.string().regex(/^\d{2}:\d{2}$/),
     broadArea: z.string().trim().min(1).max(80),
+    streetName: optionalText(100),
     noiseType: z.enum(noiseTypes),
     duration: z.enum(durations),
     experiencedAt: z.enum(experiencedAt),

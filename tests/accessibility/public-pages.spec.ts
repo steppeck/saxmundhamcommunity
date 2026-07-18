@@ -31,6 +31,7 @@ test("report answers persist after going back", async ({ page }) => {
   await page.locator("#incidentDate").fill("2026-07-01");
   await page.locator("#approximateTime").fill("01:30");
   await page.getByLabel("Town centre and station").check();
+  await page.locator("#streetName").fill("Station Approach");
   await page.getByRole("button", { name: "Continue" }).click();
   await page.getByRole("button", { name: "Back" }).click();
   await expect(page.locator("#incidentDate")).toHaveValue("2026-07-01");
@@ -42,5 +43,6 @@ test("report validation is clearly identified", async ({ page }) => {
   await expect(page.locator("#error-summary")).toContainText(
     "Check your answers",
   );
+  await expect(page.locator("#error-summary")).toBeFocused();
   await expect(page.getByText("Enter the date.").first()).toBeVisible();
 });

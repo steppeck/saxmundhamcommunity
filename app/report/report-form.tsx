@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { siteConfig } from "@/config/site";
 import {
@@ -18,6 +18,7 @@ type Data = {
   incidentDate: string;
   approximateTime: string;
   broadArea: string;
+  streetName: string;
   noiseType: string;
   duration: string;
   experiencedAt: string;
@@ -38,6 +39,7 @@ const initial: Data = {
   incidentDate: "",
   approximateTime: "",
   broadArea: "",
+  streetName: "",
   noiseType: "",
   duration: "",
   experiencedAt: "",
@@ -69,11 +71,20 @@ export function ReportForm() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [reference, setReference] = useState("");
+  const errorSummaryRef = useRef<HTMLDivElement>(null);
   const submissionToken = useMemo(() => crypto.randomUUID(), []);
 
   function update<K extends keyof Data>(key: K, value: Data[K]) {
     setData((current) => ({ ...current, [key]: value }));
     setErrors((current) => ({ ...current, [key]: "" }));
+  }
+
+  function showErrors(next: Record<string, string>) {
+    setErrors(next);
+    window.setTimeout(() => {
+      errorSummaryRef.current?.focus();
+      errorSummaryRef.current?.scrollIntoView({ block: "start" });
+    }, 0);
   }
 
   function validate(currentStep: number) {
@@ -86,7 +97,7 @@ export function ReportForm() {
     if (currentStep === 0) {
       need("incidentDate", "Enter the date.");
       need("approximateTime", "Enter an approximate time.");
-      need("broadArea", "Choose a broad area.");
+      need("broadArea", "Choose an area.");
       if (
         data.incidentDate &&
         new Date(`${data.incidentDate}T23:59:59`) > new Date()
@@ -117,11 +128,11 @@ export function ReportForm() {
     if (currentStep === 5 && !data.accuracyConfirmed)
       next.accuracyConfirmed =
         "Confirm that the information is accurate before submitting.";
-    setErrors(next);
     if (Object.keys(next).length) {
-      document.getElementById("error-summary")?.focus();
+      showErrors(next);
       return false;
     }
+    setErrors(next);
     return true;
   }
 
@@ -143,7 +154,7 @@ export function ReportForm() {
       });
       const result = await response.json();
       if (!response.ok) {
-        setErrors(
+        showErrors(
           result.errors || {
             form: result.error || "We could not save the report. Try again.",
           },
@@ -153,7 +164,7 @@ export function ReportForm() {
       }
       setReference(result.reference);
     } catch {
-      setErrors({
+      showErrors({
         form: "We could not connect to the service. Your answers are still here.",
       });
       setSaving(false);
@@ -203,6 +214,7 @@ export function ReportForm() {
       {fields.length ? (
         <div
           id="error-summary"
+          ref={errorSummaryRef}
           className="error-summary"
           role="alert"
           tabIndex={-1}
@@ -250,12 +262,26 @@ export function ReportForm() {
           </Field>
           <ChoiceField
             id="broadArea"
-            label="Which broad area of Saxmundham?"
+            label="Which area or street in Saxmundham?"
             options={siteConfig.locations}
             value={data.broadArea}
             onChange={(v) => update("broadArea", v)}
             error={errors.broadArea}
           />
+          <Field
+            id="streetName"
+            label="Street name (optional)"
+            hint="Enter the street name only. Do not include a house name or number."
+            error={errors.streetName}
+          >
+            <input
+              id="streetName"
+              maxLength={100}
+              autoComplete="off"
+              value={data.streetName}
+              onChange={(e) => update("streetName", e.target.value)}
+            />
+          </Field>
         </>
       )}
 
@@ -426,7 +452,8 @@ export function ReportForm() {
             {[
               ["Date", data.incidentDate, 0],
               ["Approximate time", data.approximateTime, 0],
-              ["Broad area", data.broadArea, 0],
+              ["Area", data.broadArea, 0],
+              ["Street name", data.streetName || "Not provided", 0],
               ["Noise type", data.noiseType, 1],
               ["Duration", data.duration, 1],
               ["Experienced", data.experiencedAt, 1],
@@ -460,6 +487,7 @@ export function ReportForm() {
               email address and private comments will never be published.
             </p>
           </div>
+          <h2>Confirm and submit</h2>
           <label className="choice" id="accuracyConfirmed">
             <input
               type="checkbox"

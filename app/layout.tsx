@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 };
 
 const navigation = [
-  ["/report", "Report noise"],
+  ["/report", "Report disturbance"],
   ["/reports", "Public reports"],
   ["/statistics", "Statistics"],
   ["/how-it-works", "How it works"],

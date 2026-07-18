@@ -17,6 +17,7 @@ export async function getAdminReports(
     approximateTime: String(r.approximate_time),
     timePeriod: "",
     broadArea: String(r.broad_area),
+    streetName: r.street_name ? String(r.street_name) : null,
     noiseType: String(r.noise_type),
     duration: String(r.duration),
     experiencedAt: String(r.experienced_at),

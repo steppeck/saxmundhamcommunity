@@ -4,6 +4,7 @@ export type PublicReport = {
   approximateTime: string;
   timePeriod: string;
   broadArea: string;
+  streetName: string | null;
   noiseType: string;
   duration: string;
   experiencedAt: string;

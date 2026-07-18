@@ -62,6 +62,14 @@ export default function PrivacyPage() {
           website. GitHub stores source code and must not contain report data or
           secrets.
         </p>
+        <h2>Cookies</h2>
+        <p>
+          Public pages do not use analytics, advertising or personalisation
+          cookies. When an administrator signs in, the service sets one secure,
+          strictly necessary session cookie named <code>sax_admin_access</code>.
+          It keeps the private dashboard signed in, expires with the
+          authentication session and is not used to track visitors.
+        </p>
         <h2>Automated decisions</h2>
         <p>
           The service does not use AI or automated decision-making to approve or

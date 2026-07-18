@@ -25,7 +25,8 @@ export default async function AdminReportPage({
               {Object.entries({
                 "Incident date": report.incidentDate,
                 "Approximate time": report.approximateTime,
-                "Broad area": report.broadArea,
+                Area: report.broadArea,
+                "Street name": report.streetName || "Not provided",
                 "Noise type": report.noiseType,
                 Duration: report.duration,
                 Experienced: report.experiencedAt,

@@ -7,6 +7,7 @@ type PublicRow = {
   approximate_time: string;
   time_period: string;
   broad_area: string;
+  street_name: string | null;
   noise_type: string;
   duration: string;
   experienced_at: string;
@@ -31,6 +32,7 @@ export async function getPublicReports(): Promise<PublicReport[]> {
       approximateTime: row.approximate_time,
       timePeriod: row.time_period,
       broadArea: row.broad_area,
+      streetName: row.street_name,
       noiseType: row.noise_type,
       duration: row.duration,
       experiencedAt: row.experienced_at,

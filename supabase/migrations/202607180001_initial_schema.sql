@@ -17,6 +17,7 @@ create table public.incidents (
   incident_date date not null check (incident_date <= current_date),
   approximate_time time not null,
   broad_location_id uuid not null references public.broad_locations(id),
+  street_name text check (char_length(street_name) <= 100),
   noise_type text not null check (noise_type in (
     'Train horn', 'Engine noise or idling', 'Wheel or rail squeal',
     'Track or engineering work', 'Crossing or barrier alarm', 'Vibration',
@@ -109,6 +110,7 @@ select
     else 'Evening (6pm-midnight)'
   end as time_period,
   l.name as broad_area,
+  i.street_name,
   i.noise_type,
   i.duration,
   i.experienced_at,
@@ -157,18 +159,19 @@ begin
 
   select id into location_id from public.broad_locations
   where name = payload->>'broadArea' and active = true;
-  if location_id is null then raise exception 'Unknown broad area'; end if;
+  if location_id is null then raise exception 'Unknown area'; end if;
 
   new_reference := 'SAX-' || extract(year from incident_day)::int || '-' ||
-    upper(substr(encode(gen_random_bytes(6), 'hex'), 1, 6));
+    upper(substr(encode(extensions.gen_random_bytes(6), 'hex'), 1, 6));
   contact_days := least(greatest(coalesce((payload->>'retentionDays')::int, 365), 30), 730);
 
   insert into public.incidents (
-    reference, incident_date, approximate_time, broad_location_id, noise_type,
+    reference, incident_date, approximate_time, broad_location_id, street_name, noise_type,
     duration, experienced_at, window_state, effects, disruption_level,
     frequency, report_timing, submission_fingerprint
   ) values (
     new_reference, incident_day, (payload->>'approximateTime')::time, location_id,
+    nullif(trim(payload->>'streetName'), ''),
     payload->>'noiseType', payload->>'duration', payload->>'experiencedAt',
     nullif(payload->>'windowState', ''),
     array(select jsonb_array_elements_text(payload->'effects')),
@@ -213,7 +216,7 @@ begin
     select coalesce(jsonb_agg(row_to_json(r) order by r.submitted_at desc), '[]'::jsonb)
     from (
       select i.id, i.reference, i.incident_date, to_char(i.approximate_time, 'HH24:MI') approximate_time,
-        l.name broad_area, i.noise_type, i.duration, i.experienced_at, i.window_state,
+        l.name broad_area, i.street_name, i.noise_type, i.duration, i.experienced_at, i.window_state,
         i.effects, i.disruption_level, i.frequency, i.report_timing, i.status,
         i.submitted_at, d.name reporter_name, d.email reporter_email,
         c.comment private_comments, n.note admin_note,

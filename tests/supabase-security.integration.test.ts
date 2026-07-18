@@ -47,6 +47,7 @@ describe.skipIf(!configured)("live anonymous Supabase policies", () => {
           "noise_type",
           "reference",
           "report_timing",
+          "street_name",
           "time_period",
           "window_state",
         ].sort(),

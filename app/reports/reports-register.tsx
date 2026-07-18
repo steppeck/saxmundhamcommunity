@@ -69,6 +69,7 @@ export function ReportsRegister({ reports }: { reports: PublicReport[] }) {
       "approximateTime",
       "timePeriod",
       "broadArea",
+      "streetName",
       "noiseType",
       "duration",
       "experiencedAt",
@@ -121,7 +122,7 @@ export function ReportsRegister({ reports }: { reports: PublicReport[] }) {
             onChange={(v) => set("timePeriod", v)}
           />
           <Select
-            label="Broad area"
+            label="Area"
             value={filters.area}
             options={choices("broadArea")}
             onChange={(v) => set("area", v)}
@@ -177,7 +178,11 @@ export function ReportsRegister({ reports }: { reports: PublicReport[] }) {
             <dl>
               <Fact term="Incident date" value={report.incidentDate} />
               <Fact term="Approximate time" value={report.approximateTime} />
-              <Fact term="Broad area" value={report.broadArea} />
+              <Fact term="Area" value={report.broadArea} />
+              <Fact
+                term="Street name"
+                value={report.streetName || "Not provided"}
+              />
               <Fact term="Noise type" value={report.noiseType} />
               <Fact term="Duration" value={report.duration} />
               <Fact term="Experienced" value={report.experiencedAt} />
