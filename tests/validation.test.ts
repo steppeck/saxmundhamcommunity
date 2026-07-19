@@ -6,7 +6,7 @@ const valid = {
   approximateTime: "01:30",
   broadArea: "Town centre and station",
   streetName: "Station Approach",
-  noiseType: "Train horn",
+  noiseType: ["Train horn"],
   duration: "1-5 minutes",
   experiencedAt: "Indoors",
   windowState: "Windows closed",
@@ -32,8 +32,15 @@ describe("report validation", () => {
     ).toBe(false));
   it("rejects unknown choices", () =>
     expect(
-      reportSchema.safeParse({ ...valid, noiseType: "Anything" }).success,
+      reportSchema.safeParse({ ...valid, noiseType: ["Anything"] }).success,
     ).toBe(false));
+  it("accepts more than one disturbance type", () =>
+    expect(
+      reportSchema.safeParse({
+        ...valid,
+        noiseType: ["Train horn", "Engine noise or idling"],
+      }).success,
+    ).toBe(true));
   it("allows optional contact details", () =>
     expect(
       reportSchema.safeParse({ ...valid, reporterName: "", reporterEmail: "" })
@@ -42,5 +49,13 @@ describe("report validation", () => {
   it("requires the accuracy confirmation", () =>
     expect(
       reportSchema.safeParse({ ...valid, accuracyConfirmed: false }).success,
+    ).toBe(false));
+  it("requires an email address when updates are selected", () =>
+    expect(
+      reportSchema.safeParse({
+        ...valid,
+        updatesOptIn: true,
+        reporterEmail: "",
+      }).success,
     ).toBe(false));
 });

@@ -40,7 +40,7 @@ export default async function AdminReportsPage({
             <Link key={r.id} href={`/admin/reports/${r.id}`}>
               <strong>{r.reference}</strong>
               <span>
-                {r.incidentDate} - {r.noiseType}
+                {r.incidentDate} - {r.noiseType.join("; ")}
               </span>
               <span className="status">{r.status}</span>
             </Link>

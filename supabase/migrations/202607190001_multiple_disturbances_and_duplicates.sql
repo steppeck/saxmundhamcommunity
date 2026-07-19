@@ -1,7 +1,38 @@
-alter table public.incidents
-add column if not exists street_name text check (char_length(street_name) <= 100);
+drop view if exists public.approved_reports;
 
-create or replace view public.approved_reports
+alter table public.incidents
+drop constraint if exists incidents_noise_type_check;
+
+alter table public.incidents
+drop constraint if exists incidents_incident_date_check;
+
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'incidents'
+      and column_name = 'noise_type'
+      and data_type = 'text'
+  ) then
+    alter table public.incidents
+    alter column noise_type type text[]
+    using array[noise_type];
+  end if;
+end;
+$$;
+
+alter table public.incidents
+add constraint incidents_noise_type_check check (
+  cardinality(noise_type) between 1 and 8 and noise_type <@ array[
+    'Train horn', 'Engine noise or idling', 'Wheel or rail squeal',
+    'Track or engineering work', 'Crossing or barrier alarm', 'Vibration',
+    'Repeated passing trains', 'Other or unsure'
+  ]::text[]
+);
+
+create view public.approved_reports
 with (security_invoker = true)
 as
 select
@@ -15,6 +46,7 @@ select
     else 'Evening (6pm-midnight)'
   end as time_period,
   l.name as broad_area,
+  i.street_name,
   i.noise_type,
   i.duration,
   i.experienced_at,
@@ -22,8 +54,7 @@ select
   i.effects,
   i.disruption_level,
   i.frequency,
-  i.report_timing,
-  i.street_name
+  i.report_timing
 from public.incidents i
 join public.broad_locations l on l.id = i.broad_location_id
 where i.status = 'approved';

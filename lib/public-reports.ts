@@ -8,7 +8,7 @@ type PublicRow = {
   time_period: string;
   broad_area: string;
   street_name: string | null;
-  noise_type: string;
+  noise_type: string[];
   duration: string;
   experienced_at: string;
   window_state: string | null;
@@ -33,7 +33,7 @@ export async function getPublicReports(): Promise<PublicReport[]> {
       timePeriod: row.time_period,
       broadArea: row.broad_area,
       streetName: row.street_name,
-      noiseType: row.noise_type,
+      noiseType: row.noise_type || [],
       duration: row.duration,
       experiencedAt: row.experienced_at,
       windowState: row.window_state,

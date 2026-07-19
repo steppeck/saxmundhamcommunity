@@ -5,7 +5,9 @@ import type { AdminReport } from "@/lib/types";
 import { moderationStatuses } from "@/lib/options";
 export function ModerationForm({ report }: { report: AdminReport }) {
   const router = useRouter();
-  const [status, setStatus] = useState(report.status);
+  const [status, setStatus] = useState(
+    report.status === "pending" ? "approved" : report.status,
+  );
   const [reason, setReason] = useState("");
   const [note, setNote] = useState(report.adminNote || "");
   const [message, setMessage] = useState("");
@@ -44,6 +46,15 @@ export function ModerationForm({ report }: { report: AdminReport }) {
       <p>
         Current status: <strong className="status">{report.status}</strong>
       </p>
+      {report.possibleDuplicates.length ? (
+        <div className="notice warning">
+          <strong>Possible duplicate detected</strong>
+          <p>
+            Similar report references: {report.possibleDuplicates.join(", ")}.
+            Check these before saving the decision.
+          </p>
+        </div>
+      ) : null}
       <div className="field">
         <label htmlFor="status">Decision</label>
         <select
@@ -54,7 +65,7 @@ export function ModerationForm({ report }: { report: AdminReport }) {
           {moderationStatuses.map((item) => (
             <option key={item} value={item}>
               {item === "approved"
-                ? "Approve for public statistics"
+                ? "Approve for public"
                 : item[0].toUpperCase() + item.slice(1)}
             </option>
           ))}

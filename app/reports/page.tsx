@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getPublicReports } from "@/lib/public-reports";
 import { siteConfig } from "@/config/site";
+import { ShareLinks } from "../share-links";
 
 export const metadata: Metadata = { title: "Public reports" };
 export const dynamic = "force-dynamic";
@@ -94,6 +95,14 @@ export default async function ReportsPage() {
         <div className="notice">
           <p>{siteConfig.publicStatus}</p>
         </div>
+        <section className="share-section" aria-labelledby="share-heading">
+          <h2 id="share-heading">Share this timeline</h2>
+          <ShareLinks
+            title="Saxmundham railway disturbance timeline"
+            text="See when approved railway disturbance reports took place in Saxmundham."
+            url={`${siteConfig.publicUrl}/reports`}
+          />
+        </section>
       </div>
     </section>
   );

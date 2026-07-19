@@ -29,8 +29,10 @@ export default function HowItWorksPage() {
             <h2>A community administrator reviews it</h2>
             <p>
               The administrator checks for accidental personal information,
-              duplicates and obvious data errors. This review is for data
-              quality and privacy, not to suppress inconvenient reports.
+              possible duplicate flags and obvious data errors. Approve for
+              public is selected by default, but an administrator must confirm
+              publication. This review is for data quality and privacy, not to
+              suppress inconvenient reports.
             </p>
           </li>
           <li>

@@ -19,7 +19,7 @@ const dimensions: Array<[string, string, (report: PublicReport) => string[]]> =
     [
       "Reports by noise type",
       "Shows the kinds of noise and disturbance selected by residents.",
-      (r) => [r.noiseType],
+      (r) => r.noiseType,
     ],
     [
       "Reports by duration",

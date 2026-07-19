@@ -14,15 +14,16 @@ create table public.broad_locations (
 create table public.incidents (
   id uuid primary key default gen_random_uuid(),
   reference text not null unique check (reference ~ '^SAX-[0-9]{4}-[A-Z0-9]{6}$'),
-  incident_date date not null check (incident_date <= current_date),
+  incident_date date not null,
   approximate_time time not null,
   broad_location_id uuid not null references public.broad_locations(id),
   street_name text check (char_length(street_name) <= 100),
-  noise_type text not null check (noise_type in (
+  noise_type text[] not null check (
+    cardinality(noise_type) between 1 and 8 and noise_type <@ array[
     'Train horn', 'Engine noise or idling', 'Wheel or rail squeal',
     'Track or engineering work', 'Crossing or barrier alarm', 'Vibration',
     'Repeated passing trains', 'Other or unsure'
-  )),
+  ]::text[]),
   duration text not null check (duration in (
     'Under 1 minute', '1-5 minutes', '6-15 minutes', '16-30 minutes',
     '31-60 minutes', 'Over 1 hour', 'Repeated intermittently', 'Unsure'
@@ -151,10 +152,21 @@ declare
   location_id uuid;
   incident_day date;
   contact_days integer;
+  uk_now timestamp := clock_timestamp() at time zone 'Europe/London';
+  selected_noise_types text[];
 begin
   incident_day := (payload->>'incidentDate')::date;
-  if incident_day > current_date or incident_day < current_date - interval '2 years' then
+  if jsonb_typeof(payload->'noiseType') = 'array' then
+    selected_noise_types := array(select jsonb_array_elements_text(payload->'noiseType'));
+  else
+    selected_noise_types := array[payload->>'noiseType'];
+  end if;
+  if incident_day > uk_now::date or incident_day < uk_now::date - interval '2 years' then
     raise exception 'Incident date is outside the allowed range';
+  end if;
+  if incident_day = uk_now::date
+     and (payload->>'approximateTime')::time > uk_now::time then
+    raise exception 'Incident time is in the future';
   end if;
 
   select id into location_id from public.broad_locations
@@ -172,7 +184,8 @@ begin
   ) values (
     new_reference, incident_day, (payload->>'approximateTime')::time, location_id,
     nullif(trim(payload->>'streetName'), ''),
-    payload->>'noiseType', payload->>'duration', payload->>'experiencedAt',
+    selected_noise_types,
+    payload->>'duration', payload->>'experiencedAt',
     nullif(payload->>'windowState', ''),
     array(select jsonb_array_elements_text(payload->'effects')),
     payload->>'disruptionLevel', payload->>'frequency', payload->>'reportTiming',
@@ -220,6 +233,20 @@ begin
         i.effects, i.disruption_level, i.frequency, i.report_timing, i.status,
         i.submitted_at, d.name reporter_name, d.email reporter_email,
         c.comment private_comments, n.note admin_note,
+        (
+          select coalesce(array_agg(other.reference order by other.submitted_at), array[]::text[])
+          from public.incidents other
+          join private.reporter_details other_details on other_details.incident_id = other.id
+          where other.id <> i.id
+            and d.email is not null
+            and other_details.email = d.email
+            and other.incident_date = i.incident_date
+            and other.broad_location_id = i.broad_location_id
+            and coalesce(lower(other.street_name), '') = coalesce(lower(i.street_name), '')
+            and abs(extract(epoch from (other.approximate_time - i.approximate_time))) <= 900
+            and other.noise_type && i.noise_type
+            and other.status not in ('duplicate', 'excluded', 'removed')
+        ) possible_duplicates,
         (
           select coalesce(jsonb_agg(jsonb_build_object(
             'action', a.action, 'fromStatus', a.from_status,

@@ -6,9 +6,9 @@ export const metadata: Metadata = { title: "Report railway noise" };
 
 export default function ReportPage() {
   return (
-    <section className="page-shell">
+    <section className="page-shell report-page">
       <div className="reading-width">
-        <div className="page-heading">
+        <div className="page-heading report-page-heading">
           <p className="eyebrow">Report railway noise</p>
           <h1>Tell us what happened</h1>
           <p className="lead">

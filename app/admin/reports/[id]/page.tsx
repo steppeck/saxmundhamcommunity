@@ -27,7 +27,7 @@ export default async function AdminReportPage({
                 "Approximate time": report.approximateTime,
                 Area: report.broadArea,
                 "Street name": report.streetName || "Not provided",
-                "Noise type": report.noiseType,
+                "Noise types": report.noiseType.join("; "),
                 Duration: report.duration,
                 Experienced: report.experiencedAt,
                 "Window position": report.windowState || "Not applicable",

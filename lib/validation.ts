@@ -9,6 +9,7 @@ import {
   reportTimings,
   windowStates,
 } from "./options";
+import { futureIncidentError } from "./incident-date-time";
 
 const optionalText = (maximum: number) =>
   z.string().trim().max(maximum).optional().or(z.literal(""));
@@ -19,7 +20,7 @@ export const reportSchema = z
     approximateTime: z.string().regex(/^\d{2}:\d{2}$/),
     broadArea: z.string().trim().min(1).max(80),
     streetName: optionalText(100),
-    noiseType: z.enum(noiseTypes),
+    noiseType: z.array(z.enum(noiseTypes)).min(1).max(noiseTypes.length),
     duration: z.enum(durations),
     experiencedAt: z.enum(experiencedAt),
     windowState: z.enum(windowStates).optional().or(z.literal("")),
@@ -45,9 +46,25 @@ export const reportSchema = z
     (value) => value.experiencedAt === "Outdoors" || Boolean(value.windowState),
     { message: "Choose the window position.", path: ["windowState"] },
   )
-  .refine((value) => new Date(`${value.incidentDate}T23:59:59`) <= new Date(), {
-    message: "The incident date cannot be in the future.",
-    path: ["incidentDate"],
+  .superRefine((value, context) => {
+    const futureError = futureIncidentError(
+      value.incidentDate,
+      value.approximateTime,
+    );
+    if (futureError)
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: futureError,
+        path: [
+          futureError.includes("time") ? "approximateTime" : "incidentDate",
+        ],
+      });
+    if (value.updatesOptIn && !value.reporterEmail)
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Enter an email address to receive updates.",
+        path: ["reporterEmail"],
+      });
   });
 
 export type ReportInput = z.infer<typeof reportSchema>;

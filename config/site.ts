@@ -12,6 +12,9 @@ export const siteConfig = {
   contactRetentionDays: Number(process.env.CONTACT_RETENTION_DAYS || 365),
   publicStatus:
     "Reports are submitted by residents and may not have been independently verified.",
+  publicUrl:
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    "https://saxmundham-rail-watch.netlify.app",
   locations: [
     "Town centre and station",
     "North of the station",

@@ -30,7 +30,7 @@ export default async function AdminDashboard() {
           {reports.slice(0, 8).map((r) => (
             <Link key={r.id} href={`/admin/reports/${r.id}`}>
               <strong>{r.reference}</strong>
-              <span>{r.noiseType}</span>
+              <span>{r.noiseType.join("; ")}</span>
               <span className="status">{r.status}</span>
             </Link>
           ))}

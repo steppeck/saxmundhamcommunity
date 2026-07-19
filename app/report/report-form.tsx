@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { siteConfig } from "@/config/site";
+import { futureIncidentError } from "@/lib/incident-date-time";
 import {
   disruptionLevels,
   durations,
@@ -19,7 +20,7 @@ type Data = {
   approximateTime: string;
   broadArea: string;
   streetName: string;
-  noiseType: string;
+  noiseType: string[];
   duration: string;
   experiencedAt: string;
   windowState: string;
@@ -40,7 +41,7 @@ const initial: Data = {
   approximateTime: "",
   broadArea: "",
   streetName: "",
-  noiseType: "",
+  noiseType: [],
   duration: "",
   experiencedAt: "",
   windowState: "",
@@ -98,11 +99,16 @@ export function ReportForm() {
       need("incidentDate", "Enter the date.");
       need("approximateTime", "Enter an approximate time.");
       need("broadArea", "Choose an area.");
-      if (
-        data.incidentDate &&
-        new Date(`${data.incidentDate}T23:59:59`) > new Date()
-      )
-        next.incidentDate = "The date cannot be in the future.";
+      if (data.incidentDate && data.approximateTime) {
+        const futureError = futureIncidentError(
+          data.incidentDate,
+          data.approximateTime,
+        );
+        if (futureError)
+          next[
+            futureError.includes("time") ? "approximateTime" : "incidentDate"
+          ] = futureError;
+      }
     }
     if (currentStep === 1) {
       need("noiseType", "Choose the type of noise or disturbance.");
@@ -125,9 +131,18 @@ export function ReportForm() {
       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.reporterEmail)
     )
       next.reporterEmail = "Enter a valid email address, or leave it blank.";
-    if (currentStep === 5 && !data.accuracyConfirmed)
-      next.accuracyConfirmed =
-        "Confirm that the information is accurate before submitting.";
+    if (currentStep === 5) {
+      if (!data.accuracyConfirmed)
+        next.accuracyConfirmed =
+          "Confirm that the information is accurate before submitting.";
+      if (data.updatesOptIn && !data.reporterEmail)
+        next.reporterEmail = "Enter an email address to receive updates.";
+      else if (
+        data.reporterEmail &&
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.reporterEmail)
+      )
+        next.reporterEmail = "Enter a valid email address.";
+    }
     if (Object.keys(next).length) {
       showErrors(next);
       return false;
@@ -199,7 +214,11 @@ export function ReportForm() {
 
   const fields = Object.entries(errors).filter(([, message]) => message);
   return (
-    <form onSubmit={(event) => event.preventDefault()} noValidate>
+    <form
+      data-step={step}
+      onSubmit={(event) => event.preventDefault()}
+      noValidate
+    >
       <div
         className="progress"
         aria-label={`Step ${step + 1} of ${steps.length}: ${steps[step]}`}
@@ -287,9 +306,9 @@ export function ReportForm() {
 
       {step === 1 && (
         <>
-          <ChoiceField
+          <MultiChoiceField
             id="noiseType"
-            label="What type of noise or disturbance was it?"
+            label="What type of noise or disturbance was it? Choose all that apply."
             options={noiseTypes}
             value={data.noiseType}
             onChange={(v) => update("noiseType", v)}
@@ -447,14 +466,14 @@ export function ReportForm() {
 
       {step === 5 && (
         <>
-          <h2>Check your answers</h2>
+          <h1 className="form-step-heading">Check your answers</h1>
           <dl className="review-list">
             {[
               ["Date", data.incidentDate, 0],
               ["Approximate time", data.approximateTime, 0],
               ["Area", data.broadArea, 0],
               ["Street name", data.streetName || "Not provided", 0],
-              ["Noise type", data.noiseType, 1],
+              ["Noise type", data.noiseType.join("; "), 1],
               ["Duration", data.duration, 1],
               ["Experienced", data.experiencedAt, 1],
               ["Effects", data.effects.join("; "), 2],
@@ -502,7 +521,7 @@ export function ReportForm() {
           {errors.accuracyConfirmed && (
             <p className="error">{errors.accuracyConfirmed}</p>
           )}
-          <label className="choice">
+          <label className="choice" id="updatesOptIn">
             <input
               type="checkbox"
               checked={data.updatesOptIn}
@@ -513,6 +532,26 @@ export function ReportForm() {
               Saxmundham faces with increased traffic on rail and road.
             </span>
           </label>
+          {data.updatesOptIn && !data.reporterEmail ? (
+            <Field
+              id="reporterEmail"
+              label="Email address for updates"
+              hint="Required because you selected email updates. This address will never be published."
+              error={errors.reporterEmail}
+            >
+              <input
+                id="reporterEmail"
+                type="email"
+                autoComplete="email"
+                value={data.reporterEmail}
+                onChange={(e) => update("reporterEmail", e.target.value)}
+              />
+            </Field>
+          ) : data.updatesOptIn ? (
+            <p className="update-email-confirmation">
+              Updates will be sent to <strong>{data.reporterEmail}</strong>.
+            </p>
+          ) : null}
         </>
       )}
 
@@ -617,6 +656,52 @@ function ChoiceField({
               value={option}
               checked={value === option}
               onChange={() => onChange(option)}
+            />
+            <span>{option}</span>
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
+function MultiChoiceField({
+  id,
+  label,
+  options,
+  value,
+  onChange,
+  error,
+}: {
+  id: string;
+  label: string;
+  options: readonly string[];
+  value: string[];
+  onChange: (value: string[]) => void;
+  error?: string;
+}) {
+  return (
+    <fieldset className="field" id={id}>
+      <legend>{label}</legend>
+      {error && (
+        <p className="error" id={`${id}-error`}>
+          {error}
+        </p>
+      )}
+      <div className="choice-list">
+        {options.map((option) => (
+          <label className="choice" key={option}>
+            <input
+              type="checkbox"
+              value={option}
+              checked={value.includes(option)}
+              onChange={(event) =>
+                onChange(
+                  event.target.checked
+                    ? [...value, option]
+                    : value.filter((item) => item !== option),
+                )
+              }
             />
             <span>{option}</span>
           </label>

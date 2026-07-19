@@ -5,7 +5,7 @@ export type PublicReport = {
   timePeriod: string;
   broadArea: string;
   streetName: string | null;
-  noiseType: string;
+  noiseType: string[];
   duration: string;
   experiencedAt: string;
   windowState: string | null;
@@ -22,6 +22,7 @@ export type AdminReport = PublicReport & {
   reporterEmail: string | null;
   privateComments: string | null;
   adminNote: string | null;
+  possibleDuplicates: string[];
   submittedAt: string;
   history?: Array<{
     action: string;

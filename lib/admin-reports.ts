@@ -18,7 +18,9 @@ export async function getAdminReports(
     timePeriod: "",
     broadArea: String(r.broad_area),
     streetName: r.street_name ? String(r.street_name) : null,
-    noiseType: String(r.noise_type),
+    noiseType: Array.isArray(r.noise_type)
+      ? r.noise_type.map(String)
+      : [String(r.noise_type)],
     duration: String(r.duration),
     experiencedAt: String(r.experienced_at),
     windowState: r.window_state ? String(r.window_state) : null,
@@ -31,6 +33,9 @@ export async function getAdminReports(
     reporterEmail: r.reporter_email ? String(r.reporter_email) : null,
     privateComments: r.private_comments ? String(r.private_comments) : null,
     adminNote: r.admin_note ? String(r.admin_note) : null,
+    possibleDuplicates: Array.isArray(r.possible_duplicates)
+      ? r.possible_duplicates.map(String)
+      : [],
     submittedAt: String(r.submitted_at),
     history: Array.isArray(r.history)
       ? (r.history as Array<Record<string, unknown>>).map((item) => ({
