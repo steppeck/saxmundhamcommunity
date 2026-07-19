@@ -55,7 +55,7 @@ test("report validation is clearly identified", async ({ page }) => {
 test("public reports page presents a simple timeline", async ({ page }) => {
   await page.goto("/reports");
   await expect(
-    page.getByRole("heading", { name: "Report timeline" }),
+    page.getByRole("heading", { name: "Public report overview" }),
   ).toBeVisible();
   await expect(
     page.getByRole("list", { name: "Monthly report totals" }),
@@ -64,6 +64,11 @@ test("public reports page presents a simple timeline", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Share" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Email" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Copy link" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: "Types of disturbance reported",
+    }),
+  ).toBeVisible();
 });
 
 test("check answers hides the repeated introduction and requests an updates email", async ({

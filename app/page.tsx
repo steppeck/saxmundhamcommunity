@@ -1,13 +1,9 @@
 import Link from "next/link";
-import { getPublicReports } from "@/lib/public-reports";
+import { getPublicSubmissionSummary } from "@/lib/public-summary";
 import { siteConfig } from "@/config/site";
 
 export default async function HomePage() {
-  const reports = await getPublicReports();
-  const sleepReports = reports.filter((report) =>
-    report.effects.some((effect) => effect.toLowerCase().includes("sleep")),
-  ).length;
-  const areas = new Set(reports.map((report) => report.broadArea)).size;
+  const summary = await getPublicSubmissionSummary();
 
   return (
     <>
@@ -33,21 +29,21 @@ export default async function HomePage() {
           <h2 id="headline-statistics">Reports at a glance</h2>
           <div className="headline-stats">
             <article>
-              <strong>{reports.length}</strong>
-              <span>approved reports</span>
+              <strong>{summary.total}</strong>
+              <span>reports in anonymous totals</span>
             </article>
             <article>
-              <strong>{sleepReports}</strong>
+              <strong>{summary.sleepReports}</strong>
               <span>mention sleep disturbance</span>
             </article>
             <article>
-              <strong>{areas}</strong>
+              <strong>{summary.areasRepresented}</strong>
               <span>broad areas represented</span>
             </article>
           </div>
-          {reports.length === 0 ? (
+          {summary.total === 0 ? (
             <p className="muted">
-              Statistics will appear after reports have been approved.
+              Anonymous statistics will appear after the first valid report.
             </p>
           ) : null}
         </div>
@@ -57,10 +53,9 @@ export default async function HomePage() {
         <div className="reading-width">
           <h2>How reports help</h2>
           <p>
-            Each report records the same useful facts. Once a community
-            administrator has checked it for privacy and data quality, its
-            non-personal answers can be added to the public register and
-            statistics.
+            Each report records the same useful facts. Structured answers
+            contribute to anonymous grouped totals straight away. Individual
+            reports still require an administrator check before publication.
           </p>
           <p>
             Reports are resident accounts and may not have been independently

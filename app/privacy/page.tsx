@@ -35,14 +35,16 @@ export default function PrivacyPage() {
         <h2>Why we collect it</h2>
         <p>
           We use reports to identify patterns, maintain an evidence record,
-          check data quality and publish approved non-personal statistics.
-          Contact details may be used to check a report or provide an update.
+          check data quality and publish anonymous grouped counts. Contact
+          details may be used to check a report or provide an update.
         </p>
         <h2>What is published</h2>
         <p>
-          Approved structured incident answers may be published. Your name,
-          email address, private comments and administrator notes are never
-          published.
+          Structured answers contribute immediately to grouped totals by month,
+          broad area and disturbance type. Individual structured reports may be
+          published only after approval. Your name, email address, private
+          comments, street name, report reference and administrator notes are
+          never included in the automatic public totals.
         </p>
         <h2>How long we keep it</h2>
         <p>

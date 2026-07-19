@@ -2,7 +2,7 @@ export const siteConfig = {
   name: "Saxmundham Rail Disturbances Report",
   shortName: "Rail Disturbances Report",
   description:
-    "Residents can record when railway noise affects everyday life. Non-personal information from approved reports is published to help Saxmundham residents see recurring patterns.",
+    "Residents can record when railway noise affects everyday life. Anonymous grouped totals update as valid reports are submitted, helping Saxmundham residents see recurring patterns.",
   communityStatement:
     "This is a community-led project. It is not run by the council or Network Rail.",
   emergency:
@@ -11,7 +11,7 @@ export const siteConfig = {
   dataController: process.env.DATA_CONTROLLER_NAME || "",
   contactRetentionDays: Number(process.env.CONTACT_RETENTION_DAYS || 365),
   publicStatus:
-    "Reports are submitted by residents and may not have been independently verified.",
+    "Figures come from resident submissions and may not have been independently verified.",
   publicUrl:
     process.env.NEXT_PUBLIC_SITE_URL ||
     "https://saxmundham-rail-watch.netlify.app",

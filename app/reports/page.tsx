@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getPublicReports } from "@/lib/public-reports";
+import { getPublicSubmissionSummary } from "@/lib/public-summary";
 import { siteConfig } from "@/config/site";
 import { ShareLinks } from "../share-links";
 
@@ -7,54 +7,47 @@ export const metadata: Metadata = { title: "Public reports" };
 export const dynamic = "force-dynamic";
 
 export default async function ReportsPage() {
-  const reports = await getPublicReports();
+  const summary = await getPublicSubmissionSummary();
   const today = new Date();
   const currentMonth = monthKey(today);
-  const thirtyDaysAgo = new Date(today);
-  thirtyDaysAgo.setUTCDate(thirtyDaysAgo.getUTCDate() - 29);
-  thirtyDaysAgo.setUTCHours(0, 0, 0, 0);
 
   const timeline = recentMonths(today, 12).map((key) => ({
     key,
     label: formatMonth(key),
-    count: reports.filter((report) => report.incidentDate.startsWith(key))
-      .length,
+    count: summary.byMonth[key] || 0,
   }));
   const largestCount = Math.max(...timeline.map((month) => month.count), 1);
-  const thisMonth = reports.filter((report) =>
-    report.incidentDate.startsWith(currentMonth),
-  ).length;
-  const lastThirtyDays = reports.filter(
-    (report) => new Date(`${report.incidentDate}T00:00:00Z`) >= thirtyDaysAgo,
-  ).length;
-  const latestDate = reports
-    .map((report) => report.incidentDate)
-    .sort()
-    .at(-1);
+  const noiseTypes = Object.entries(summary.byNoiseType).sort(
+    (a, b) => b[1] - a[1],
+  );
+  const largestNoiseCount = Math.max(
+    ...noiseTypes.map(([, count]) => count),
+    1,
+  );
 
   return (
     <section className="page-shell">
       <div className="page-width">
         <div className="page-heading">
-          <p className="eyebrow">Approved public data</p>
-          <h1>Report timeline</h1>
+          <p className="eyebrow">Anonymous community data</p>
+          <h1>Public report overview</h1>
           <p className="lead">
-            A simple view of when approved railway disturbance reports took
-            place.
+            Anonymous totals update when a valid report is submitted. No
+            personal details or individual reports appear here.
           </p>
         </div>
 
         <div className="headline-stats" aria-label="Report totals">
           <article>
-            <strong>{reports.length}</strong>
-            <span>approved reports in total</span>
+            <strong>{summary.total}</strong>
+            <span>reports contributing to totals</span>
           </article>
           <article>
-            <strong>{lastThirtyDays}</strong>
+            <strong>{summary.lastThirtyDays}</strong>
             <span>in the last 30 days</span>
           </article>
           <article>
-            <strong>{thisMonth}</strong>
+            <strong>{summary.thisMonth}</strong>
             <span>in {formatMonth(currentMonth)}</span>
           </article>
         </div>
@@ -86,20 +79,59 @@ export default async function ReportsPage() {
             ))}
           </ol>
           <p className="timeline-latest">
-            {latestDate
-              ? `Most recent approved incident: ${formatDate(latestDate)}.`
-              : "There are no approved reports yet."}
+            {summary.latestMonth
+              ? `Most recent report month: ${formatMonth(summary.latestMonth)}.`
+              : "There are no reports yet."}
           </p>
         </section>
 
+        <section className="chart-section" aria-labelledby="types-heading">
+          <h2 id="types-heading">Types of disturbance reported</h2>
+          <p>
+            A report can include more than one type, so these totals may add up
+            to more than the number of reports.
+          </p>
+          {noiseTypes.length ? (
+            <ol
+              className="bars timeline-bars"
+              aria-label="Disturbance type totals"
+            >
+              {noiseTypes.map(([label, count]) => (
+                <li className="bar-row" key={label}>
+                  <span>{label}</span>
+                  <div className="bar-track" aria-hidden="true">
+                    <div
+                      className="bar"
+                      style={{
+                        width: `${(count / largestNoiseCount) * 100}%`,
+                      }}
+                    />
+                  </div>
+                  <strong>
+                    <span className="sr-only">{label}: </span>
+                    {count}
+                  </strong>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p>There are no disturbance types to show yet.</p>
+          )}
+        </section>
+
         <div className="notice">
+          <p>
+            These are grouped counts from structured answers. Names, email
+            addresses, private comments, street names, report references and
+            individual records are not included.
+          </p>
           <p>{siteConfig.publicStatus}</p>
         </div>
         <section className="share-section" aria-labelledby="share-heading">
           <h2 id="share-heading">Share this timeline</h2>
           <ShareLinks
             title="Saxmundham railway disturbance timeline"
-            text="See when approved railway disturbance reports took place in Saxmundham."
+            text="See the anonymous overview of railway disturbance reports in Saxmundham."
             url={`${siteConfig.publicUrl}/reports`}
           />
         </section>
@@ -131,13 +163,4 @@ function formatMonth(key: string) {
     year: "numeric",
     timeZone: "UTC",
   }).format(new Date(`${key}-01T00:00:00Z`));
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(`${value}T00:00:00Z`));
 }

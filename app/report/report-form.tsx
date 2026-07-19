@@ -192,8 +192,9 @@ export function ReportForm() {
       <div className="confirmation" role="status">
         <h2>Your report has been received</h2>
         <p>
-          It is private and pending review. It will not appear publicly unless a
-          community administrator approves it.
+          Your individual report is private and pending review. Its structured,
+          non-personal answers contribute to anonymous public totals straight
+          away.
         </p>
         <p>Your reference number is:</p>
         <p className="reference">{reference}</p>

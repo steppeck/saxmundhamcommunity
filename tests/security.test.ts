@@ -39,4 +39,28 @@ describe("database privacy controls", () => {
     ])
       expect(view).not.toContain(field);
   });
+  it("limits the automatic public summary to grouped structured counts", () => {
+    const summary = sql
+      .slice(
+        sql.lastIndexOf(
+          "create or replace function public.public_submission_summary",
+        ),
+      )
+      .split("comment on function public.public_submission_summary")[0];
+    expect(summary).toContain("where i.status in ('pending', 'approved')");
+    expect(summary).toContain(
+      "grant execute on function public.public_submission_summary() to anon, authenticated",
+    );
+    for (const field of [
+      "reporter_details",
+      "report_comments",
+      "admin_notes",
+      "audit_log",
+      "street_name",
+      "reference",
+      "submitted_at",
+      "approximate_time",
+    ])
+      expect(summary).not.toContain(field);
+  });
 });

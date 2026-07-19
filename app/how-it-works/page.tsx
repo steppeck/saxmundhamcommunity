@@ -19,10 +19,11 @@ export default function HowItWorksPage() {
             </p>
           </li>
           <li>
-            <h2>The report stays private</h2>
+            <h2>The individual report stays private</h2>
             <p>
-              Every new report is marked pending. It does not appear in the
-              public register or statistics.
+              Every new report is marked pending. The individual record does not
+              appear publicly, but its structured answers contribute immediately
+              to anonymous grouped totals.
             </p>
           </li>
           <li>
@@ -36,17 +37,19 @@ export default function HowItWorksPage() {
             </p>
           </li>
           <li>
-            <h2>Approved facts are published</h2>
+            <h2>Anonymous patterns appear immediately</h2>
             <p>
-              Only structured, non-personal answers from approved reports appear
-              publicly. Free-text comments are never published.
+              The public overview receives counts by month, broad area and
+              disturbance type. It cannot receive names, emails, comments,
+              street names, references, IDs or individual records.
             </p>
           </li>
           <li>
-            <h2>Patterns become visible</h2>
+            <h2>Approved reports support more detailed evidence</h2>
             <p>
-              The reports page, CSV and statistics show recurring times, areas,
-              noise types and effects.
+              Administrator approval is still required before an individual
+              report can enter the more detailed public evidence data. Free-text
+              comments are never published.
             </p>
           </li>
         </ol>
