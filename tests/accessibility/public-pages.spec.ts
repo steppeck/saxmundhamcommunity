@@ -104,3 +104,17 @@ test("check answers hides the repeated introduction and requests an updates emai
     .check();
   await expect(page.getByLabel("Email address for updates")).toBeVisible();
 });
+
+test("later report steps use a compact introduction", async ({ page }) => {
+  await page.goto("/report");
+  await page.locator("#incidentDate").fill("2026-07-01");
+  await page.locator("#approximateTime").fill("01:30");
+  await page.getByLabel("Town centre and station").check();
+  await page.getByRole("button", { name: "Continue" }).click();
+
+  const heading = page.getByRole("heading", {
+    name: "Tell us what happened",
+  });
+  await expect(heading).toBeVisible();
+  await expect(heading).toHaveCSS("font-size", "22px");
+});

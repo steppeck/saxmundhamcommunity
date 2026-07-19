@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { siteConfig } from "@/config/site";
 import { futureIncidentError } from "@/lib/incident-date-time";
+import { ShareLinks } from "../share-links";
 import {
   disruptionLevels,
   durations,
@@ -208,6 +209,22 @@ export function ReportForm() {
             Return to the home page
           </Link>
         </div>
+        <section
+          className="confirmation-share"
+          aria-labelledby="confirmation-share-heading"
+        >
+          <h3 id="confirmation-share-heading">
+            Invite someone else to report a disturbance
+          </h3>
+          <p>
+            Sharing this page does not include your answers or reference number.
+          </p>
+          <ShareLinks
+            title="Report a railway disturbance in Saxmundham"
+            text="Record when railway noise or disturbance affects you in Saxmundham."
+            url={`${siteConfig.publicUrl}/report`}
+          />
+        </section>
       </div>
     );
   }
