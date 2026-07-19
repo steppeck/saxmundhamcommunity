@@ -46,3 +46,14 @@ test("report validation is clearly identified", async ({ page }) => {
   await expect(page.locator("#error-summary")).toBeFocused();
   await expect(page.getByText("Enter the date.").first()).toBeVisible();
 });
+
+test("public reports page presents a simple timeline", async ({ page }) => {
+  await page.goto("/reports");
+  await expect(
+    page.getByRole("heading", { name: "Report timeline" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("list", { name: "Monthly report totals" }),
+  ).toBeVisible();
+  await expect(page.getByText("Filter reports")).toHaveCount(0);
+});
