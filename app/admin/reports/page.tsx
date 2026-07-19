@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/admin-session";
 import { getAdminReports } from "@/lib/admin-reports";
-import { AdminNav } from "../admin-nav";
 export default async function AdminReportsPage({
   searchParams,
 }: {
@@ -15,7 +14,6 @@ export default async function AdminReportsPage({
     : reports;
   return (
     <div className="admin-shell">
-      <AdminNav name={session.profile.display_name} />
       <section className="admin-main">
         <h1>All reports</h1>
         <form role="search">

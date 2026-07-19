@@ -471,6 +471,46 @@ fieldset {
 .timeline-latest {
   font-weight: 800;
 }
+.disturbance-block-chart {
+  display: grid;
+  gap: 1.5rem;
+  max-width: 850px;
+  padding: 0;
+  margin-block: 1.5rem;
+  list-style: none;
+}
+.disturbance-block-chart li {
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 1.25rem;
+}
+.block-chart-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.65rem;
+}
+.block-chart-label span,
+.block-chart-label strong {
+  font-weight: 800;
+}
+.count-blocks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 22px);
+  gap: 6px;
+  min-height: 22px;
+}
+.count-block {
+  width: 22px;
+  height: 22px;
+  background: var(--accent);
+  border: 2px solid var(--ink);
+}
+.block-chart-key {
+  display: block;
+  margin-top: 0.55rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
 .share-section {
   border-top: 1px solid var(--line);
   margin-top: 2rem;
@@ -519,19 +559,38 @@ th {
   background: #e9ecea;
 }
 .admin-shell {
-  display: grid;
-  grid-template-columns: 240px 1fr;
   min-height: 70vh;
 }
 .admin-nav {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
   background: #22282a;
   color: white;
-  padding: 1.5rem;
+  padding: 0.8rem max(1rem, calc((100% - 1180px) / 2));
+}
+.admin-identity {
+  display: grid;
+  gap: 0.1rem;
+  margin-right: auto;
+}
+.admin-identity span {
+  font-size: 0.85rem;
+}
+.admin-nav nav {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
 }
 .admin-nav a {
-  display: block;
   color: white;
-  padding: 0.7rem 0;
+  padding: 0.55rem 0.7rem;
+}
+.admin-nav form {
+  margin: 0;
+}
+.admin-nav .button {
+  padding: 0.55rem 0.8rem;
 }
 .admin-main {
   padding: 2.5rem;
@@ -611,13 +670,16 @@ th {
   .site-footer nav {
     margin-top: 1.5rem;
   }
-  .admin-shell {
-    grid-template-columns: 1fr;
-  }
   .admin-nav {
-    display: flex;
+    align-items: flex-start;
     flex-wrap: wrap;
     gap: 1rem;
+  }
+  .admin-identity {
+    width: 100%;
+  }
+  .admin-nav nav {
+    flex-wrap: wrap;
   }
   .admin-nav a {
     padding: 0.2rem;

@@ -1,6 +1,5 @@
 import { requireAdmin } from "@/lib/admin-session";
 import { getAdminReports } from "@/lib/admin-reports";
-import { AdminNav } from "./admin-nav";
 import Link from "next/link";
 
 export default async function AdminDashboard() {
@@ -10,7 +9,6 @@ export default async function AdminDashboard() {
     reports.filter((r) => r.status === status).length;
   return (
     <div className="admin-shell">
-      <AdminNav name={session.profile.display_name} />
       <section className="admin-main">
         <h1>Report dashboard</h1>
         <p>

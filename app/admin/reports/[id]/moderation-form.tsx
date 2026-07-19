@@ -65,11 +65,17 @@ export function ModerationForm({ report }: { report: AdminReport }) {
           {moderationStatuses.map((item) => (
             <option key={item} value={item}>
               {item === "approved"
-                ? "Approve for public"
+                ? "Add to evidence register"
                 : item[0].toUpperCase() + item.slice(1)}
             </option>
           ))}
         </select>
+        {status === "approved" ? (
+          <p className="field-help">
+            Includes this report in the approved evidence spreadsheet and
+            detailed public statistics. This does not send a complaint.
+          </p>
+        ) : null}
       </div>
       <div className="field">
         <label htmlFor="reason">

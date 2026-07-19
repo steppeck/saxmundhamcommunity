@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { getAdminReports } from "@/lib/admin-reports";
+import { getAdminSession } from "@/lib/admin-session";
 import { getPublicReports } from "@/lib/public-reports";
 import type { PublicReport } from "@/lib/types";
 
@@ -44,7 +46,13 @@ const dimensions: Array<[string, string, (report: PublicReport) => string[]]> =
   ];
 
 export default async function StatisticsPage() {
-  const reports = await getPublicReports();
+  const session = await getAdminSession();
+  const reports = session
+    ? (await getAdminReports(session.token)).filter((report) =>
+        ["pending", "approved"].includes(report.status),
+      )
+    : await getPublicReports();
+  const isAdminView = Boolean(session);
   const sleep = reports.filter((r) =>
     r.effects.some((e) => e.toLowerCase().includes("sleep")),
   ).length;
@@ -53,17 +61,22 @@ export default async function StatisticsPage() {
     <section className="page-shell">
       <div className="page-width">
         <div className="page-heading">
-          <p className="eyebrow">Approved public data</p>
+          <p className="eyebrow">
+            {isAdminView
+              ? "Protected administration data"
+              : "Approved public data"}
+          </p>
           <h1>What residents have reported</h1>
           <p className="lead">
-            Simple summaries of approved, non-personal reports. These figures
-            update when administrators approve or remove a report.
+            {isAdminView
+              ? "Summaries of pending and approved reports. Duplicate, excluded and removed reports are not counted."
+              : "Simple summaries of approved, non-personal reports. These figures update when administrators add or remove a report from the evidence register."}
           </p>
         </div>
         <div className="headline-stats">
           <article>
             <strong>{reports.length}</strong>
-            <span>approved reports</span>
+            <span>{isAdminView ? "eligible reports" : "approved reports"}</span>
           </article>
           <article>
             <strong>{sleep}</strong>
@@ -78,8 +91,9 @@ export default async function StatisticsPage() {
         </div>
         <Chart
           title="Reports over time"
-          summary="Approved reports grouped by incident month."
+          summary={`${isAdminView ? "Eligible" : "Approved"} reports grouped by incident month.`}
           values={byMonth}
+          emptyLabel={isAdminView ? "eligible" : "approved"}
         />
         {dimensions.map(([title, summary, selector]) => (
           <Chart
@@ -87,6 +101,7 @@ export default async function StatisticsPage() {
             title={title}
             summary={summary}
             values={count(reports, selector)}
+            emptyLabel={isAdminView ? "eligible" : "approved"}
           />
         ))}
       </div>
@@ -109,10 +124,12 @@ function Chart({
   title,
   summary,
   values,
+  emptyLabel,
 }: {
   title: string;
   summary: string;
   values: Array<[string, number]>;
+  emptyLabel: string;
 }) {
   const max = Math.max(...values.map(([, value]) => value), 1);
   return (
@@ -122,7 +139,7 @@ function Chart({
         {summary}{" "}
         {values.length
           ? `The largest group is ${values[0][0]} with ${values[0][1]} reports.`
-          : "There is no approved data yet."}
+          : `There is no ${emptyLabel} data yet.`}
       </p>
       {values.length ? (
         <>

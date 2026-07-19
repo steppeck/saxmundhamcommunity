@@ -11,7 +11,7 @@ export default async function ReportsPage() {
   const today = new Date();
   const currentMonth = monthKey(today);
 
-  const timeline = recentMonths(today, 12).map((key) => ({
+  const timeline = monthsThisYear(today).map((key) => ({
     key,
     label: formatMonth(key),
     count: summary.byMonth[key] || 0,
@@ -19,10 +19,6 @@ export default async function ReportsPage() {
   const largestCount = Math.max(...timeline.map((month) => month.count), 1);
   const noiseTypes = Object.entries(summary.byNoiseType).sort(
     (a, b) => b[1] - a[1],
-  );
-  const largestNoiseCount = Math.max(
-    ...noiseTypes.map(([, count]) => count),
-    1,
   );
 
   return (
@@ -55,7 +51,7 @@ export default async function ReportsPage() {
         <section className="chart-section" aria-labelledby="timeline-heading">
           <h2 id="timeline-heading">Reports by month</h2>
           <p>
-            The graph covers the latest 12 months and uses the date when each
+            The graph covers this year to date and uses the date when each
             disturbance took place.
           </p>
           <ol className="bars timeline-bars" aria-label="Monthly report totals">
@@ -93,24 +89,26 @@ export default async function ReportsPage() {
           </p>
           {noiseTypes.length ? (
             <ol
-              className="bars timeline-bars"
+              className="disturbance-block-chart"
               aria-label="Disturbance type totals"
             >
               {noiseTypes.map(([label, count]) => (
-                <li className="bar-row" key={label}>
-                  <span>{label}</span>
-                  <div className="bar-track" aria-hidden="true">
-                    <div
-                      className="bar"
-                      style={{
-                        width: `${(count / largestNoiseCount) * 100}%`,
-                      }}
-                    />
+                <li key={label}>
+                  <div className="block-chart-label">
+                    <span>{label}</span>
+                    <strong>{count}</strong>
                   </div>
-                  <strong>
-                    <span className="sr-only">{label}: </span>
-                    {count}
-                  </strong>
+                  <div className="count-blocks" aria-hidden="true">
+                    {Array.from({ length: count }, (_, index) => (
+                      <span className="count-block" key={index} />
+                    ))}
+                  </div>
+                  <span className="sr-only">
+                    {label}: {count}
+                  </span>
+                  <span className="block-chart-key">
+                    Each block represents one report selection.
+                  </span>
                 </li>
               ))}
             </ol>
@@ -144,15 +142,9 @@ function monthKey(date: Date) {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
-function recentMonths(date: Date, count: number) {
-  return Array.from({ length: count }, (_, index) => {
-    const month = new Date(
-      Date.UTC(
-        date.getUTCFullYear(),
-        date.getUTCMonth() - (count - index - 1),
-        1,
-      ),
-    );
+function monthsThisYear(date: Date) {
+  return Array.from({ length: date.getUTCMonth() + 1 }, (_, index) => {
+    const month = new Date(Date.UTC(date.getUTCFullYear(), index, 1));
     return monthKey(month);
   });
 }

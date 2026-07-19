@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { developmentWarning, siteConfig } from "@/config/site";
+import { getAdminSession } from "@/lib/admin-session";
+import { AdminNav } from "./admin/admin-nav";
 import "./styles.css";
 
 export const metadata: Metadata = {
@@ -15,11 +17,13 @@ const navigation = [
   ["/how-it-works", "How it works"],
 ] as const;
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const adminSession = await getAdminSession();
+
   return (
     <html lang="en">
       <body>
@@ -46,6 +50,9 @@ export default function RootLayout({
             </nav>
           </div>
         </header>
+        {adminSession ? (
+          <AdminNav name={adminSession.profile.display_name} />
+        ) : null}
         <main id="main">{children}</main>
         <footer className="site-footer">
           <div>

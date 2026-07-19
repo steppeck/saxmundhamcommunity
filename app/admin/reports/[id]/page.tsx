@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/admin-session";
 import { getAdminReports } from "@/lib/admin-reports";
-import { AdminNav } from "../../admin-nav";
 import { ModerationForm } from "./moderation-form";
 export default async function AdminReportPage({
   params,
@@ -14,7 +13,6 @@ export default async function AdminReportPage({
   if (!report) notFound();
   return (
     <div className="admin-shell">
-      <AdminNav name={session.profile.display_name} />
       <section className="admin-main">
         <p className="eyebrow">{report.reference}</p>
         <h1>Review report</h1>
